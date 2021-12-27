@@ -7,7 +7,7 @@ import albumentations as albu
 import io
 import base64
 from PIL import Image
-from fpn_inception import FPNInception
+from services.fpn_inception import FPNInception
 from mimetypes import guess_extension
 
 MODEL_PATH = '../weights/model_deblur.h5'
@@ -30,7 +30,10 @@ class DeblurProcessor:
         norm_layer = functools.partial(nn.InstanceNorm2d, affine=False, track_running_stats=True)
         model = FPNInception(norm_layer=norm_layer)
         model = nn.DataParallel(model)
-        model.load_state_dict(torch.load(weight_path)['model'])
+        if torch.cuda.is_available():
+            model.load_state_dict(torch.load(weight_path)['model'])
+        else:
+            model.load_state_dict(torch.load(weight_path, map_location=torch.device('cpu'))['model'])
         self.model = model.cuda()
         self.model.train(True)
         self.normalize_fn = get_normalize()
@@ -135,5 +138,3 @@ if __name__ == '__main__':
         base64_image_string = fin.readline()
         b64_to_image(base64_image_string, 'blur_b64.jpg')
         deblur_base64_image(base64_image_string, save_path='deblurred_b64.jpg')
-    
-                                                                                                                        
