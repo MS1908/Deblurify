@@ -1,5 +1,4 @@
 from flask import Flask, request, jsonify
-import json
 from services.deblur_utils import deblur_base64_image
 
 WEIGHT_PATH = 'weights/model_deblur.h5'
