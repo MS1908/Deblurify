@@ -31,7 +31,7 @@ class DeblurProcessor:
         model = nn.DataParallel(model)
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model.load_state_dict(torch.load(weight_path, map_location=device)['model'])
-        self.model = model.cuda()
+        self.model = model.to(device)
         self.model.train(True)
         self.normalize_fn = get_normalize()
 
@@ -67,8 +67,9 @@ class DeblurProcessor:
 
     def __call__(self, img):
         img, h, w = self._preprocess(img)
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         with torch.no_grad():
-            inputs = [img.cuda()]
+            inputs = [img.to(device)]
             pred = self.model(*inputs)
         return self._postprocess(pred)[:h, :w, :]
 
