@@ -8,7 +8,6 @@ import io
 import base64
 from PIL import Image
 from services.fpn_inception import FPNInception
-from mimetypes import guess_extension
 
 MODEL_PATH = '../weights/model_deblur.h5'
 
@@ -101,11 +100,18 @@ def deblur_image(image_path, weight_path=None, save_path=None):
 
 
 def b64_to_image(b64_string, save_path=None):
-    hdr, b64_image = b64_string.split(';base64,')
+    if ';base64,' in b64_string:
+        hdr, b64_image = b64_string.split(';base64,')
+    else:
+        hdr = None
+        b64_image = b64_string
 
     b64_image = base64.b64decode(b64_image)
     image = Image.open(io.BytesIO(b64_image))
-    image_ext = guess_extension(hdr)
+    if hdr is not None:
+        image_ext = hdr.split('/')[-1]
+    else:
+        image_ext = 'jpg'
 
     if save_path is not None:
         image.save(save_path)
@@ -117,7 +123,8 @@ def image_to_b64(image, image_ext, save_path=None):
     buffered = io.BytesIO()
     image.save(buffered, format=image_ext)
     b64_image = base64.b64encode(buffered.getvalue())
-    return b64_image
+    b64_string = b64_image.decode('utf-8')
+    return b64_string
 
 
 def deblur_base64_image(b64_string, weight_path=None, save_path=None):
