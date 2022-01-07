@@ -1,10 +1,16 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from services.deblur_utils import deblur_base64_image
 
 WEIGHT_PATH = 'weights/model_deblur.h5'
 
 app = Flask(__name__)
+CORS(app)
 
+
+@app.route('/api/v1/deblur', methods=['GET'])
+def deblur_get():
+    return "Deblurify!"
 
 @app.route('/api/v1/deblur', methods=['POST'])
 def deblur_api():
