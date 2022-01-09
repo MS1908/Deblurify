@@ -1,4 +1,4 @@
-Deblur model weight: https://drive.google.com/file/d/1-mE6Ef4xLXR5rCmGzaUMeMP8SHfPcvr2/view?usp=sharing
+Deblur model weight: https://drive.google.com/drive/folders/1Ki5N_cE_mz_o12gSQzz1HnFAE01hR-ea?usp=sharing
 
 Set up:
   * Download weight file, then put into the directory *weights/*
