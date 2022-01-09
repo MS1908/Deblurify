@@ -8,8 +8,10 @@ import io
 import base64
 from PIL import Image
 from services.fpn_inception import FPNInception
+from services.fpn_mobilenet import FPNMobileNet
 
-MODEL_PATH = '../weights/model_deblur.h5'
+
+MODEL_PATH = '../weights/fpn_inception.h5'
 
 
 def get_normalize():
@@ -25,14 +27,27 @@ def get_normalize():
 
 class DeblurProcessor:
     
-    def __init__(self, weight_path):
+    def load_inception_model(self, incep_weight_path):
         norm_layer = functools.partial(nn.InstanceNorm2d, affine=False, track_running_stats=True)
         model = FPNInception(norm_layer=norm_layer)
         model = nn.DataParallel(model)
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        model.load_state_dict(torch.load(weight_path, map_location=device)['model'])
-        self.model = model.to(device)
-        self.model.train(True)
+        model.load_state_dict(torch.load(incep_weight_path, map_location=device)['model'])
+        self.inception_model = model.to(device)
+        self.inception_model.train(True)
+
+    def load_mobilenet_model(self, mbnet_weight_path):
+        norm_layer = functools.partial(nn.InstanceNorm2d, affine=False, track_running_stats=True)
+        model = FPNMobileNet(norm_layer=norm_layer)
+        model = nn.DataParallel(model)
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model.load_state_dict(torch.load(mbnet_weight_path, map_location=device)['model'])
+        self.mobilenet_model = model.to(device)
+        self.mobilenet_model.train(True)
+
+    def __init__(self, incep_weight_path, mbnet_weight_path):
+        self.load_inception_model(incep_weight_path)
+        self.load_mobilenet_model(mbnet_weight_path)
         self.normalize_fn = get_normalize()
 
     @staticmethod
@@ -65,12 +80,20 @@ class DeblurProcessor:
         x = (np.transpose(x, (1, 2, 0)) + 1) / 2.0 * 255.0
         return x.astype('uint8')
 
+    def deblur_quick(self, img):
+        img, h, w = self._preprocess(img)
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        with torch.no_grad():
+            inputs = [img.to(device)]
+            pred = self.mobilenet_model(*inputs)
+        return self._postprocess(pred)[:h, :w, :]
+
     def __call__(self, img):
         img, h, w = self._preprocess(img)
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         with torch.no_grad():
             inputs = [img.to(device)]
-            pred = self.model(*inputs)
+            pred = self.inception_model(*inputs)
         return self._postprocess(pred)[:h, :w, :]
 
 
@@ -82,7 +105,7 @@ class DeblurProcessorSingleton:
     def __new__(cls, weight_path=None):
         if cls.__deblur_instance is None or cls.__weight_path != weight_path and weight_path is not None:
             cls.__deblur_instance = super(DeblurProcessorSingleton, cls).__new__(cls)
-            cls.__deblur_instance = DeblurProcessor(weight_path)
+            cls.__deblur_instance = DeblurProcessor(weight_path['incep'], weight_path['mbnet'])
             cls.__weight_path = weight_path
         return cls.__deblur_instance
 
@@ -131,6 +154,18 @@ def deblur_base64_image(b64_string, weight_path=None, save_path=None):
     np_image = np.array(image.convert('RGB'))
     deblur_processor = DeblurProcessorSingleton(weight_path)
     deblurred = deblur_processor(np_image)
+    deblurred = Image.fromarray(deblurred)
+    if save_path is not None:
+        deblurred.save(save_path)
+    deblurred_b64 = image_to_b64(deblurred, image_ext)
+    return deblurred_b64
+
+
+def deblur_base64_image_quick(b64_string, weight_path=None, save_path=None):
+    image, image_ext = b64_to_image(b64_string)
+    np_image = np.array(image.convert('RGB'))
+    deblur_processor = DeblurProcessorSingleton(weight_path)
+    deblurred = deblur_processor.deblur_quick(np_image)
     deblurred = Image.fromarray(deblurred)
     if save_path is not None:
         deblurred.save(save_path)
