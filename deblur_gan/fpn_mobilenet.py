@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torchvision.models import mobilenet_v2
+from deblur_gan.mobilenet_v2 import MobileNetV2
 
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -22,9 +23,15 @@ class FPNHead(nn.Module):
 
 class FPN(nn.Module):
 
-    def __init__(self, norm_layer, num_filters=128, pretrained=True):
+    def __init__(self, norm_layer, num_filters=128, pretrained=True, pretrained_path=None):
         super().__init__()
-        net = mobilenet_v2(pretrained=pretrained)
+        # net = mobilenet_v2(pretrained=pretrained)
+        net = MobileNetV2()
+        if pretrained:
+            assert pretrained_path is not None, 'pretrained model is not specified'
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            state_dict = torch.load(pretrained_path, map_location=device)
+            net.load_state_dict(state_dict)
         self.features = net.features
 
         self.enc0 = nn.Sequential(*self.features[0:2])
@@ -79,14 +86,16 @@ class FPN(nn.Module):
         return lateral0, map1, map2, map3, map4
 
 
-class FPNMobileNet(nn.Module):
+class FPNMobileNetV2(nn.Module):
 
-    def __init__(self, norm_layer, output_ch=3, num_filters=64, num_filters_fpn=128, pretrained=True):
+    def __init__(self, norm_layer, output_ch=3, num_filters=64, num_filters_fpn=128, pretrained=True,
+                 pretrained_path=None):
         super().__init__()
 
         # Feature Pyramid Network (FPN) with four feature maps of resolutions
         # 1/4, 1/8, 1/16, 1/32 and `num_filters` filters for all feature maps.
-        self.fpn = FPN(num_filters=num_filters_fpn, norm_layer = norm_layer, pretrained=pretrained)
+        self.fpn = FPN(num_filters=num_filters_fpn, norm_layer = norm_layer, pretrained=pretrained,
+                       pretrained_path=pretrained_path)
 
         # The segmentation heads on top of the FPN
         self.head1 = FPNHead(num_filters_fpn, num_filters, num_filters)
