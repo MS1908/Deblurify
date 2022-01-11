@@ -3,8 +3,8 @@ from flask_cors import CORS
 from services.deblur_utils import deblur_base64_image, DeblurGeneratorSingleton, deblur_base64_image_fast
 
 INCEP_WEIGHT_PATH = 'weights/fpn_inception.h5'
-MBNETV2_WEIGHT_PATH = 'weight/fpn_mobilenetv2.h5'
-MBNETV2_PRETRAINED_WEIGHT_PATH = 'weight/fpn_mobilenetv2.h5'
+MBNETV2_WEIGHT_PATH = 'weights/fpn_mobilenetv2.h5'
+MBNETV2_PRETRAINED_WEIGHT_PATH = 'weights/fpn_mobilenetv2.h5'
 WEIGHT_PATHS = {
     'incep': INCEP_WEIGHT_PATH,
     'mbnetv2': MBNETV2_WEIGHT_PATH,
