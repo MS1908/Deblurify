@@ -4,7 +4,8 @@ import torch.nn as nn
 import functools
 import albumentations as albu
 from deblur_gan.fpn_inception import FPNInception
-from deblur_gan.fpn_mobilenet import FPNMobileNetV2
+from deblur_gan.fpn_mobilenetv2 import FPNMobileNetV2
+from deblur_gan.fpn_mobilenetv3 import FPNMobileNetV3
 
 
 def get_normalize():
@@ -39,7 +40,16 @@ class DeblurGANProcessor:
         self.mobilenetv2_model = model.to(device)
         self.mobilenetv2_model.train(True)
 
-    def __init__(self, incep_weight_path, mbnetv2_weight_path, mbnet_pretrained=None):
+    def load_mobilenetv3_model(self, mbnetv3_weight_path, pretrained=True):
+        norm_layer = functools.partial(nn.InstanceNorm2d, affine=False, track_running_stats=True)
+        model = FPNMobileNetV3(norm_layer=norm_layer, pretrained=pretrained)
+        model = nn.DataParallel(model)
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model.load_state_dict(torch.load(mbnetv3_weight_path, map_location=device)['model'])
+        self.mobilenetv3_model = model.to(device)
+        self.mobilenetv3_model.train(True)
+
+    def __init__(self, incep_weight_path, mbnetv2_weight_path, mbnetv3_weight_path, mbnet_pretrained=None):
         if incep_weight_path is not None:
             self.load_inception_model(incep_weight_path)
         else:
@@ -48,6 +58,10 @@ class DeblurGANProcessor:
             self.load_mobilenetv2_model(mbnetv2_weight_path, mbnet_pretrained)
         else:
             self.mobilenetv2_model = None
+        if mbnetv3_weight_path is not None:
+            self.load_mobilenetv3_model(mbnetv3_weight_path)
+        else:
+            self.mobilenetv3_model = None
         self.normalize_fn = get_normalize()
 
     @staticmethod
@@ -88,6 +102,14 @@ class DeblurGANProcessor:
             pred = self.mobilenetv2_model(*inputs)
         return self._postprocess(pred)[:h, :w, :]
 
+    def mbnet_v3_exp(self, img):
+        img, h, w = self._preprocess(img)
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        with torch.no_grad():
+            inputs = [img.to(device)]
+            pred = self.mobilenetv3_model(*inputs)
+        return self._postprocess(pred)[:h, :w, :]
+
     def __call__(self, img):
         img, h, w = self._preprocess(img)
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -105,6 +127,7 @@ class DeblurGeneratorSingleton:
         if cls.__deblur_instance_gan is None or cls.__weight_path != weight_path and weight_path is not None:
             cls.__deblur_instance_gan = super(DeblurGeneratorSingleton, cls).__new__(cls)
             cls.__deblur_instance_gan = DeblurGANProcessor(weight_path['incep'], weight_path['mbnetv2'],
+                                                           weight_path['mbnetv3'],
                                                            weight_path['mbnetv2_pretrained'])
             cls.__weight_path = weight_path
         return cls.__deblur_instance_gan

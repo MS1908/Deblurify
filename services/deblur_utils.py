@@ -69,6 +69,18 @@ def deblur_base64_image_fast(b64_string, weight_path=None, save_path=None):
     return deblurred_b64
 
 
+def deblur_base64_image_exp(b64_string, weight_path=None, save_path=None):
+    image, image_ext = b64_to_image(b64_string)
+    np_image = np.array(image.convert('RGB'))
+    deblur_processor = DeblurGeneratorSingleton(weight_path)
+    deblurred = deblur_processor.mbnet_v3_exp(np_image)
+    deblurred = Image.fromarray(deblurred)
+    if save_path is not None:
+        deblurred.save(save_path)
+    deblurred_b64 = image_to_b64(deblurred, image_ext)
+    return deblurred_b64
+
+
 if __name__ == '__main__':
     # deblur_image('blur.jpg', 'deblurred.jpg')
     with open('blur_b64.txt', 'r') as fin:
@@ -77,7 +89,8 @@ if __name__ == '__main__':
         weight_path = {
             'incep': '../weights/fpn_inception.h5',
             'mbnetv2': '../weights/fpn_mobilenetv2.h5',
-            'mbnetv2_pretrained': '../weights/mobilenet_v2.pth.tar'
+            'mbnetv2_pretrained': '../weights/mobilenet_v2.pth.tar',
+            'mbnetv3': '../weights/fpn_mobilenetv3.h5',
         }
         deblur_base64_image(base64_image_string, weight_path=weight_path, save_path='deblurred_b64.jpg')
-        deblur_base64_image(base64_image_string, weight_path=weight_path, save_path='deblurred_b64_quick.jpg')
+        deblur_base64_image_fast(base64_image_string, weight_path=weight_path, save_path='deblurred_b64_fast.jpg')
