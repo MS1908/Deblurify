@@ -45,7 +45,7 @@ def image_to_b64(image, image_ext, save_path=None):
     return b64_string
 
 
-def deblur_base64_image(b64_string, weight_path=None, save_path=None):
+def deblur_base64_image(b64_string, del_img=True, weight_path=None, save_path=None):
     image, image_ext = b64_to_image(b64_string)
     np_image = np.array(image.convert('RGB'))
     deblur_processor = DeblurGeneratorSingleton(weight_path)
@@ -53,11 +53,13 @@ def deblur_base64_image(b64_string, weight_path=None, save_path=None):
     deblurred = Image.fromarray(deblurred)
     if save_path is not None:
         deblurred.save(save_path)
+    if del_img:
+        del image, np_image
     deblurred_b64 = image_to_b64(deblurred, image_ext)
     return deblurred_b64
 
 
-def deblur_base64_image_fast(b64_string, weight_path=None, save_path=None):
+def deblur_base64_image_fast(b64_string, del_img=True, weight_path=None, save_path=None):
     image, image_ext = b64_to_image(b64_string)
     np_image = np.array(image.convert('RGB'))
     deblur_processor = DeblurGeneratorSingleton(weight_path)
@@ -65,11 +67,13 @@ def deblur_base64_image_fast(b64_string, weight_path=None, save_path=None):
     deblurred = Image.fromarray(deblurred)
     if save_path is not None:
         deblurred.save(save_path)
+    if del_img:
+        del image, np_image
     deblurred_b64 = image_to_b64(deblurred, image_ext)
     return deblurred_b64
 
 
-def deblur_base64_image_exp(b64_string, weight_path=None, save_path=None):
+def deblur_base64_image_exp(b64_string, del_img=True, weight_path=None, save_path=None):
     image, image_ext = b64_to_image(b64_string)
     np_image = np.array(image.convert('RGB'))
     deblur_processor = DeblurGeneratorSingleton(weight_path)
@@ -77,6 +81,8 @@ def deblur_base64_image_exp(b64_string, weight_path=None, save_path=None):
     deblurred = Image.fromarray(deblurred)
     if save_path is not None:
         deblurred.save(save_path)
+    if del_img:
+        del image, np_image
     deblurred_b64 = image_to_b64(deblurred, image_ext)
     return deblurred_b64
 
