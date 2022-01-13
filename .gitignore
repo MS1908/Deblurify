@@ -319,3 +319,4 @@ htmlcov/
 # Ignore weights
 *.h5
 !spec/*.h5
+*.tar
